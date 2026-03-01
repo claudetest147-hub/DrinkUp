@@ -1,0 +1,33 @@
+{
+  "name": "drinkup",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.0.1",
+    "@supabase/supabase-js": "^2.98.0",
+    "date-fns": "^4.1.0",
+    "expo": "~55.0.4",
+    "expo-constants": "^55.0.7",
+    "expo-haptics": "^55.0.8",
+    "expo-linear-gradient": "^55.0.8",
+    "expo-linking": "^55.0.7",
+    "expo-router": "^55.0.3",
+    "expo-status-bar": "~55.0.4",
+    "react": "19.2.0",
+    "react-native": "0.83.2",
+    "react-native-gesture-handler": "^2.30.0",
+    "react-native-reanimated": "^4.2.2",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

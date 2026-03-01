@@ -1,0 +1,128 @@
+import { GameCard } from '../types';
+
+// Fallback content in case Supabase/AI fails
+export const FALLBACK_TRUTH_OR_DARE: GameCard[] = [
+  {
+    id: 'tod-1',
+    game_type: 'truth_or_dare',
+    card_subtype: 'truth',
+    content: "What's the most embarrassing song on your playlist?",
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'tod-2',
+    game_type: 'truth_or_dare',
+    card_subtype: 'dare',
+    content: 'Do your best impression of someone in the room',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'tod-3',
+    game_type: 'truth_or_dare',
+    card_subtype: 'truth',
+    content: "What's the last lie you told?",
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'tod-4',
+    game_type: 'truth_or_dare',
+    card_subtype: 'dare',
+    content: 'Let someone post anything on your Instagram story',
+    intensity: 'spicy',
+    drink_penalty: 2,
+    is_premium: false,
+  },
+  {
+    id: 'tod-5',
+    game_type: 'truth_or_dare',
+    card_subtype: 'truth',
+    content: 'Who in this room would you swipe right on?',
+    intensity: 'spicy',
+    drink_penalty: 2,
+    is_premium: false,
+  },
+];
+
+export const FALLBACK_WOULD_YOU_RATHER: GameCard[] = [
+  {
+    id: 'wyr-1',
+    game_type: 'would_you_rather',
+    content: 'Would you rather...',
+    option_a: 'Have your search history made public',
+    option_b: 'Have your DMs made public',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'wyr-2',
+    game_type: 'would_you_rather',
+    content: 'Would you rather...',
+    option_a: 'Only eat one food forever',
+    option_b: 'Never eat your favorite food again',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'wyr-3',
+    game_type: 'would_you_rather',
+    content: 'Would you rather...',
+    option_a: 'Be famous on TikTok',
+    option_b: 'Be rich but unknown',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'wyr-4',
+    game_type: 'would_you_rather',
+    content: 'Would you rather...',
+    option_a: 'Give up social media forever',
+    option_b: 'Give up streaming services forever',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+];
+
+export const FALLBACK_MOST_LIKELY_TO: GameCard[] = [
+  {
+    id: 'mlt-1',
+    game_type: 'most_likely_to',
+    content: 'Most likely to go viral on TikTok',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'mlt-2',
+    game_type: 'most_likely_to',
+    content: 'Most likely to survive on a deserted island',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'mlt-3',
+    game_type: 'most_likely_to',
+    content: 'Most likely to text their ex tonight',
+    intensity: 'spicy',
+    drink_penalty: 2,
+    is_premium: false,
+  },
+  {
+    id: 'mlt-4',
+    game_type: 'most_likely_to',
+    content: 'Most likely to fall asleep first at the party',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+];
