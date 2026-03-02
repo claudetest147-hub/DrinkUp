@@ -8,6 +8,7 @@ import {
   Dimensions,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -18,7 +19,7 @@ import { Player, Intensity } from '../../types';
 
 const { width, height } = Dimensions.get('window');
 
-// Player setup component
+// Player setup phase
 function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Intensity) => void }) {
   const [names, setNames] = useState<string[]>(['', '']);
   const [intensity, setIntensity] = useState<Intensity>('mild');
@@ -29,12 +30,17 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
     setNames(newNames);
   };
 
-  const addPlayer = () => setNames([...names, '']);
-  const removeLast = () => names.length > 2 && setNames(names.slice(0, -1));
+  const addPlayer = () => {
+    if (names.length < 8) setNames([...names, '']);
+  };
+
+  const removeLast = () => {
+    if (names.length > 2) setNames(names.slice(0, -1));
+  };
 
   const handleStart = () => {
     const validPlayers = names
-      .filter(n => n.trim())
+      .filter((n) => n.trim())
       .map((name, i) => ({
         id: String(i),
         name: name.trim(),
@@ -51,25 +57,29 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
   };
 
   return (
-    <View style={setupStyles.container}>
+    <ScrollView style={setupStyles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={setupStyles.title}>🎭 Truth or Dare</Text>
       <Text style={setupStyles.subtitle}>Who's playing?</Text>
 
       {names.map((name, i) => (
-        <TextInput
-          key={i}
-          style={setupStyles.input}
-          placeholder={`Player ${i + 1}`}
-          placeholderTextColor={APP_THEME.colors.textSecondary}
-          value={name}
-          onChangeText={(value) => updateName(i, value)}
-        />
+        <View key={i} style={setupStyles.inputRow}>
+          <TextInput
+            style={setupStyles.input}
+            placeholder={`Player ${i + 1}`}
+            placeholderTextColor={APP_THEME.colors.textSecondary}
+            value={name}
+            onChangeText={(text) => updateName(i, text)}
+            autoCapitalize="words"
+          />
+        </View>
       ))}
 
       <View style={setupStyles.buttonRow}>
-        <TouchableOpacity onPress={addPlayer} style={setupStyles.addBtn}>
-          <Text style={setupStyles.addText}>+ Add Player</Text>
-        </TouchableOpacity>
+        {names.length < 8 && (
+          <TouchableOpacity onPress={addPlayer} style={setupStyles.addBtn}>
+            <Text style={setupStyles.addText}>+ Add Player</Text>
+          </TouchableOpacity>
+        )}
         {names.length > 2 && (
           <TouchableOpacity onPress={removeLast} style={setupStyles.removeBtn}>
             <Text style={setupStyles.removeText}>Remove</Text>
@@ -108,14 +118,15 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
           <Text style={setupStyles.startText}>🎉 Start Game</Text>
         </LinearGradient>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
-// Main gameplay component
+// Main game play
 function GamePlay() {
   const { session, nextCard, nextPlayer, endGame } = useGameStore();
   const [showingChoice, setShowingChoice] = useState(true);
+  const [selectedType, setSelectedType] = useState<'truth' | 'dare' | null>(null);
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
@@ -151,12 +162,14 @@ function GamePlay() {
 
   const handleChoice = (choice: 'truth' | 'dare') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedType(choice);
     setShowingChoice(false);
   };
 
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowingChoice(true);
+    setSelectedType(null);
     nextCard();
     nextPlayer();
     scaleAnim.setValue(0.9);
@@ -165,6 +178,13 @@ function GamePlay() {
       useNativeDriver: true,
     }).start();
   };
+
+  // Filter card by selected type or show any if not filtered
+  const displayCard = selectedType
+    ? currentCard.card_subtype === selectedType
+      ? currentCard
+      : session.cards.find((c) => c.card_subtype === selectedType) || currentCard
+    : currentCard;
 
   return (
     <View style={playStyles.container}>
@@ -182,7 +202,7 @@ function GamePlay() {
           {session.currentCardIndex + 1} / {session.cards.length}
         </Text>
         <View style={playStyles.drinkBadge}>
-          <Text style={playStyles.drinkText}>🍺 {currentCard.drink_penalty}</Text>
+          <Text style={playStyles.drinkText}>🍺 {displayCard.drink_penalty}</Text>
         </View>
       </View>
 
@@ -190,7 +210,6 @@ function GamePlay() {
       <Text style={playStyles.playerTurn}>{currentPlayer.name}'s Turn</Text>
 
       {showingChoice ? (
-        /* Truth or Dare Choice */
         <View style={playStyles.choiceContainer}>
           <TouchableOpacity onPress={() => handleChoice('truth')} style={playStyles.choiceCard}>
             <LinearGradient colors={['#667eea', '#764ba2']} style={playStyles.choiceGradient}>
@@ -207,20 +226,24 @@ function GamePlay() {
           </TouchableOpacity>
         </View>
       ) : (
-        /* Card Display */
-        <Animated.View style={[playStyles.cardContainer, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View
+          style={[playStyles.cardContainer, { transform: [{ scale: scaleAnim }] }]}
+        >
           <LinearGradient
             colors={
-              currentCard.card_subtype === 'truth' ? ['#667eea', '#764ba2'] : ['#f093fb', '#f5576c']
+              displayCard.card_subtype === 'truth'
+                ? ['#667eea', '#764ba2']
+                : ['#f093fb', '#f5576c']
             }
             style={playStyles.card}
           >
             <Text style={playStyles.cardType}>
-              {currentCard.card_subtype === 'truth' ? '🤔 TRUTH' : '😈 DARE'}
+              {displayCard.card_subtype === 'truth' ? '🤔 TRUTH' : '😈 DARE'}
             </Text>
-            <Text style={playStyles.cardContent}>{currentCard.content}</Text>
+            <Text style={playStyles.cardContent}>{displayCard.content}</Text>
             <Text style={playStyles.cardPenalty}>
-              Refuse = {currentCard.drink_penalty} {currentCard.drink_penalty === 1 ? 'sip' : 'sips'} 🍺
+              Refuse = {displayCard.drink_penalty}{' '}
+              {displayCard.drink_penalty === 1 ? 'sip' : 'sips'} 🍺
             </Text>
           </LinearGradient>
         </Animated.View>
@@ -245,13 +268,20 @@ export default function TruthOrDareScreen() {
       await startGame('truth_or_dare', players, intensity);
       setGameStarted(true);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load game. Using offline mode.');
+      Alert.alert('Error', 'Failed to load game. Using offline content.');
     }
   };
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: APP_THEME.colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: APP_THEME.colors.background,
+        }}
+      >
         <Text style={{ color: '#FFF', fontSize: 24 }}>🎭 Loading...</Text>
         <Text style={{ color: APP_THEME.colors.textSecondary, marginTop: 8 }}>
           Preparing your game
@@ -269,7 +299,7 @@ const setupStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: APP_THEME.colors.background,
     padding: 24,
-    paddingTop: 80,
+    paddingTop: 60,
   },
   title: {
     fontSize: 32,
@@ -284,11 +314,13 @@ const setupStyles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 32,
   },
+  inputRow: {
+    marginBottom: 12,
+  },
   input: {
     backgroundColor: APP_THEME.colors.surface,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
     color: '#FFF',
     fontSize: 16,
   },
@@ -301,16 +333,20 @@ const setupStyles = StyleSheet.create({
     backgroundColor: APP_THEME.colors.surface,
     padding: 12,
     borderRadius: 12,
+    flex: 1,
   },
   addText: {
     color: APP_THEME.colors.secondary,
     fontWeight: '600',
+    textAlign: 'center',
   },
   removeBtn: {
     padding: 12,
+    flex: 1,
   },
   removeText: {
     color: APP_THEME.colors.primary,
+    textAlign: 'center',
   },
   intensityTitle: {
     fontSize: 18,

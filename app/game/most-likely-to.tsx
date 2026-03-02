@@ -7,6 +7,7 @@ import {
   Animated,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -25,72 +26,87 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
     setNames(newNames);
   };
 
-  const addPlayer = () => setNames([...names, '']);
-  const removeLast = () => names.length > 2 && setNames(names.slice(0, -1));
+  const addPlayer = () => {
+    if (names.length < 8) setNames([...names, '']);
+  };
+
+  const removeLast = () => {
+    if (names.length > 2) setNames(names.slice(0, -1));
+  };
 
   const handleStart = () => {
     const validPlayers = names
-      .filter(n => n.trim())
-      .map((name, i) => ({ id: String(i), name: name.trim(), score: 0, drinks: 0 }));
+      .filter((n) => n.trim())
+      .map((name, i) => ({
+        id: String(i),
+        name: name.trim(),
+        score: 0,
+        drinks: 0,
+      }));
 
     if (validPlayers.length < 2) {
-      Alert.alert('Need Players', 'Add at least 2 player names to start!');
+      Alert.alert('Need Players', 'Add at least 2 players!');
       return;
     }
+
     onStart(validPlayers, intensity);
   };
 
   return (
-    <View style={setupStyles.container}>
-      <Text style={setupStyles.title}>👆 Most Likely To</Text>
-      <Text style={setupStyles.subtitle}>Who's playing?</Text>
+    <ScrollView style={styles.setupContainer} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Text style={styles.setupTitle}>👆 Most Likely To</Text>
+      <Text style={styles.setupSubtitle}>Who's playing?</Text>
 
       {names.map((name, i) => (
-        <TextInput
-          key={i}
-          style={setupStyles.input}
-          placeholder={`Player ${i + 1}`}
-          placeholderTextColor={APP_THEME.colors.textSecondary}
-          value={name}
-          onChangeText={(value) => updateName(i, value)}
-        />
+        <View key={i} style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder={`Player ${i + 1}`}
+            placeholderTextColor={APP_THEME.colors.textSecondary}
+            value={name}
+            onChangeText={(text) => updateName(i, text)}
+            autoCapitalize="words"
+          />
+        </View>
       ))}
 
-      <View style={setupStyles.buttonRow}>
-        <TouchableOpacity onPress={addPlayer} style={setupStyles.addBtn}>
-          <Text style={setupStyles.addText}>+ Add Player</Text>
-        </TouchableOpacity>
+      <View style={styles.buttonRow}>
+        {names.length < 8 && (
+          <TouchableOpacity onPress={addPlayer} style={styles.addBtn}>
+            <Text style={styles.addText}>+ Add Player</Text>
+          </TouchableOpacity>
+        )}
         {names.length > 2 && (
-          <TouchableOpacity onPress={removeLast} style={setupStyles.removeBtn}>
-            <Text style={setupStyles.removeText}>Remove</Text>
+          <TouchableOpacity onPress={removeLast} style={styles.removeBtn}>
+            <Text style={styles.removeText}>Remove</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <Text style={setupStyles.intensityTitle}>Intensity</Text>
-      <View style={setupStyles.intensityRow}>
+      <Text style={styles.intensityTitle}>Intensity</Text>
+      <View style={styles.intensityRow}>
         {(['mild', 'spicy', 'extreme'] as Intensity[]).map((level) => (
           <TouchableOpacity
             key={level}
-            style={[setupStyles.intensityBtn, intensity === level && setupStyles.intensityActive]}
+            style={[styles.intensityBtn, intensity === level && styles.intensityActive]}
             onPress={() => setIntensity(level)}
           >
-            <Text style={setupStyles.intensityEmoji}>
+            <Text style={styles.intensityEmoji}>
               {level === 'mild' ? '😊' : level === 'spicy' ? '🌶️' : '🔥'}
             </Text>
-            <Text style={[setupStyles.intensityLabel, intensity === level && { color: '#FFF' }]}>
+            <Text style={[styles.intensityLabel, intensity === level && { color: '#FFF' }]}>
               {level.charAt(0).toUpperCase() + level.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <TouchableOpacity style={setupStyles.startBtn} onPress={handleStart}>
-        <LinearGradient colors={['#43e97b', '#38f9d7']} style={setupStyles.startGradient}>
-          <Text style={setupStyles.startText}>👆 Start Game</Text>
+      <TouchableOpacity style={styles.startBtn} onPress={handleStart}>
+        <LinearGradient colors={['#43e97b', '#38f9d7']} style={styles.startGradient}>
+          <Text style={styles.startText}>👆 Start Game</Text>
         </LinearGradient>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -101,7 +117,10 @@ function GamePlay() {
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   React.useEffect(() => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   }, [session?.currentCardIndex]);
 
   if (!session) return null;
@@ -113,7 +132,13 @@ function GamePlay() {
       <View style={styles.endContainer}>
         <Text style={styles.endEmoji}>👆</Text>
         <Text style={styles.endTitle}>Game Over!</Text>
-        <TouchableOpacity onPress={() => { endGame(); router.back(); }} style={styles.endBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            endGame();
+            router.back();
+          }}
+          style={styles.endBtn}
+        >
           <Text style={styles.endBtnText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
@@ -122,7 +147,10 @@ function GamePlay() {
 
   const handleVote = (playerId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setVotes(prev => ({ ...prev, [playerId]: (prev[playerId] || 0) + 1 }));
+    setVotes((prev) => ({
+      ...prev,
+      [playerId]: (prev[playerId] || 0) + 1,
+    }));
   };
 
   const handleReveal = () => {
@@ -135,16 +163,26 @@ function GamePlay() {
     setVotes({});
     nextCard();
     scaleAnim.setValue(0.95);
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
-  const sortedPlayers = [...session.players].sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
+  const sortedPlayers = [...session.players].sort(
+    (a, b) => (votes[b.id] || 0) - (votes[a.id] || 0)
+  );
   const topVotes = Math.max(...Object.values(votes), 0);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => { endGame(); router.back(); }}>
+        <TouchableOpacity
+          onPress={() => {
+            endGame();
+            router.back();
+          }}
+        >
           <Text style={styles.closeBtn}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.counter}>
@@ -206,14 +244,14 @@ export default function MostLikelyToScreen() {
       await startGame('most_likely_to', players, intensity);
       setGameStarted(true);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load game. Using offline mode.');
+      Alert.alert('Error', 'Using offline content');
     }
   };
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: APP_THEME.colors.background }}>
-        <Text style={{ color: '#FFF', fontSize: 24 }}>👆 Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>👆 Loading...</Text>
       </View>
     );
   }
@@ -221,51 +259,250 @@ export default function MostLikelyToScreen() {
   return gameStarted && session ? <GamePlay /> : <PlayerSetup onStart={handleStart} />;
 }
 
-const setupStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_THEME.colors.background, padding: 24, paddingTop: 80 },
-  title: { fontSize: 32, fontWeight: '800', color: '#FFF', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: APP_THEME.colors.textSecondary, textAlign: 'center', marginTop: 8, marginBottom: 32 },
-  input: { backgroundColor: APP_THEME.colors.surface, borderRadius: 12, padding: 16, marginBottom: 12, color: '#FFF', fontSize: 16 },
-  buttonRow: { flexDirection: 'row', gap: 12, marginVertical: 16 },
-  addBtn: { backgroundColor: APP_THEME.colors.surface, padding: 12, borderRadius: 12 },
-  addText: { color: APP_THEME.colors.secondary, fontWeight: '600' },
-  removeBtn: { padding: 12 },
-  removeText: { color: APP_THEME.colors.primary },
-  intensityTitle: { fontSize: 18, fontWeight: '700', color: '#FFF', marginTop: 24, marginBottom: 12 },
-  intensityRow: { flexDirection: 'row', gap: 12 },
-  intensityBtn: { flex: 1, alignItems: 'center', padding: 16, borderRadius: 16, backgroundColor: APP_THEME.colors.surface },
-  intensityActive: { backgroundColor: APP_THEME.colors.primary },
-  intensityEmoji: { fontSize: 24, marginBottom: 4 },
-  intensityLabel: { color: APP_THEME.colors.textSecondary, fontWeight: '600', fontSize: 13 },
-  startBtn: { marginTop: 32, borderRadius: 16, overflow: 'hidden' },
-  startGradient: { padding: 18, alignItems: 'center', borderRadius: 16 },
-  startText: { fontSize: 20, fontWeight: '800', color: '#FFF' },
-});
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_THEME.colors.background, padding: 20, paddingTop: 60 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  closeBtn: { fontSize: 24, color: '#FFF', padding: 8 },
-  counter: { color: APP_THEME.colors.textSecondary, fontWeight: '600' },
-  promptContainer: { marginBottom: 32 },
-  promptCard: { borderRadius: 24, padding: 32, alignItems: 'center' },
-  promptEmoji: { fontSize: 48, marginBottom: 16 },
-  promptText: { fontSize: 24, fontWeight: '700', color: '#1A1A2E', textAlign: 'center', lineHeight: 34 },
-  promptInstruction: { fontSize: 14, color: 'rgba(26,26,46,0.6)', marginTop: 16, fontWeight: '600' },
-  voteTitle: { fontSize: 16, fontWeight: '600', color: APP_THEME.colors.textSecondary, marginBottom: 12 },
-  playerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  playerBtn: { backgroundColor: APP_THEME.colors.surface, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 16, minWidth: '45%', alignItems: 'center' },
-  playerWinner: { backgroundColor: APP_THEME.colors.primary, borderWidth: 2, borderColor: APP_THEME.colors.accent },
-  playerName: { color: '#FFF', fontWeight: '600', fontSize: 16 },
-  playerVotes: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
-  revealBtn: { backgroundColor: APP_THEME.colors.accent, padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 24 },
-  revealText: { fontSize: 18, fontWeight: '700', color: '#1A1A2E' },
-  resultText: { textAlign: 'center', fontSize: 18, fontWeight: '700', color: APP_THEME.colors.primary, marginTop: 20 },
-  nextBtn: { backgroundColor: 'rgba(255,255,255,0.15)', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 16 },
-  nextText: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  endContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: APP_THEME.colors.background },
-  endEmoji: { fontSize: 64, marginBottom: 16 },
-  endTitle: { fontSize: 32, fontWeight: '800', color: '#FFF' },
-  endBtn: { marginTop: 32, backgroundColor: APP_THEME.colors.primary, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 16 },
-  endBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  setupContainer: {
+    flex: 1,
+    backgroundColor: APP_THEME.colors.background,
+    padding: 24,
+    paddingTop: 60,
+  },
+  setupTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  setupSubtitle: {
+    fontSize: 16,
+    color: APP_THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  inputRow: {
+    marginBottom: 12,
+  },
+  input: {
+    backgroundColor: APP_THEME.colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    color: '#FFF',
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginVertical: 16,
+  },
+  addBtn: {
+    backgroundColor: APP_THEME.colors.surface,
+    padding: 12,
+    borderRadius: 12,
+    flex: 1,
+  },
+  addText: {
+    color: APP_THEME.colors.secondary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  removeBtn: {
+    padding: 12,
+    flex: 1,
+  },
+  removeText: {
+    color: APP_THEME.colors.primary,
+    textAlign: 'center',
+  },
+  intensityTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  intensityRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  intensityBtn: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: APP_THEME.colors.surface,
+  },
+  intensityActive: {
+    backgroundColor: APP_THEME.colors.primary,
+  },
+  intensityEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  intensityLabel: {
+    color: APP_THEME.colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  startBtn: {
+    marginTop: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  startGradient: {
+    padding: 18,
+    alignItems: 'center',
+  },
+  startText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: APP_THEME.colors.background,
+    padding: 20,
+    paddingTop: 60,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  closeBtn: {
+    fontSize: 24,
+    color: '#FFF',
+    padding: 8,
+  },
+  counter: {
+    color: APP_THEME.colors.textSecondary,
+    fontWeight: '600',
+  },
+  promptContainer: {
+    marginBottom: 32,
+  },
+  promptCard: {
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+  },
+  promptEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  promptText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    textAlign: 'center',
+    lineHeight: 34,
+  },
+  promptInstruction: {
+    fontSize: 14,
+    color: 'rgba(26,26,46,0.6)',
+    marginTop: 16,
+    fontWeight: '600',
+  },
+  voteTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: APP_THEME.colors.textSecondary,
+    marginBottom: 12,
+  },
+  playerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  playerBtn: {
+    backgroundColor: APP_THEME.colors.surface,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    minWidth: '45%',
+    alignItems: 'center',
+  },
+  playerWinner: {
+    backgroundColor: APP_THEME.colors.primary,
+    borderWidth: 2,
+    borderColor: APP_THEME.colors.accent,
+  },
+  playerName: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  playerVotes: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  revealBtn: {
+    backgroundColor: APP_THEME.colors.accent,
+    padding: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  revealText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A2E',
+  },
+  resultText: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    color: APP_THEME.colors.primary,
+    marginTop: 20,
+  },
+  nextBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    padding: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  nextText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  endContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: APP_THEME.colors.background,
+  },
+  endEmoji: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  endTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  endBtn: {
+    marginTop: 32,
+    backgroundColor: APP_THEME.colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  endBtnText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: APP_THEME.colors.background,
+  },
+  loadingText: {
+    color: '#FFF',
+    fontSize: 24,
+  },
 });

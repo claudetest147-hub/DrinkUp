@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Dimensions,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -15,8 +15,6 @@ import { router } from 'expo-router';
 import { useGameStore } from '../../stores/gameStore';
 import { APP_THEME } from '../../constants/themes';
 import { Player, Intensity } from '../../types';
-
-const { width } = Dimensions.get('window');
 
 function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Intensity) => void }) {
   const [names, setNames] = useState<string[]>(['', '']);
@@ -28,72 +26,87 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
     setNames(newNames);
   };
 
-  const addPlayer = () => setNames([...names, '']);
-  const removeLast = () => names.length > 2 && setNames(names.slice(0, -1));
+  const addPlayer = () => {
+    if (names.length < 8) setNames([...names, '']);
+  };
+
+  const removeLast = () => {
+    if (names.length > 2) setNames(names.slice(0, -1));
+  };
 
   const handleStart = () => {
     const validPlayers = names
-      .filter(n => n.trim())
-      .map((name, i) => ({ id: String(i), name: name.trim(), score: 0, drinks: 0 }));
+      .filter((n) => n.trim())
+      .map((name, i) => ({
+        id: String(i),
+        name: name.trim(),
+        score: 0,
+        drinks: 0,
+      }));
 
     if (validPlayers.length < 2) {
-      Alert.alert('Need Players', 'Add at least 2 player names to start!');
+      Alert.alert('Need Players', 'Add at least 2 player names!');
       return;
     }
+
     onStart(validPlayers, intensity);
   };
 
   return (
-    <View style={setupStyles.container}>
-      <Text style={setupStyles.title}>⚡ Would You Rather</Text>
-      <Text style={setupStyles.subtitle}>Who's playing?</Text>
+    <ScrollView style={styles.setupContainer} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Text style={styles.setupTitle}>⚡ Would You Rather</Text>
+      <Text style={styles.setupSubtitle}>Who's playing?</Text>
 
       {names.map((name, i) => (
-        <TextInput
-          key={i}
-          style={setupStyles.input}
-          placeholder={`Player ${i + 1}`}
-          placeholderTextColor={APP_THEME.colors.textSecondary}
-          value={name}
-          onChangeText={(value) => updateName(i, value)}
-        />
+        <View key={i} style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder={`Player ${i + 1}`}
+            placeholderTextColor={APP_THEME.colors.textSecondary}
+            value={name}
+            onChangeText={(text) => updateName(i, text)}
+            autoCapitalize="words"
+          />
+        </View>
       ))}
 
-      <View style={setupStyles.buttonRow}>
-        <TouchableOpacity onPress={addPlayer} style={setupStyles.addBtn}>
-          <Text style={setupStyles.addText}>+ Add Player</Text>
-        </TouchableOpacity>
+      <View style={styles.buttonRow}>
+        {names.length < 8 && (
+          <TouchableOpacity onPress={addPlayer} style={styles.addBtn}>
+            <Text style={styles.addText}>+ Add Player</Text>
+          </TouchableOpacity>
+        )}
         {names.length > 2 && (
-          <TouchableOpacity onPress={removeLast} style={setupStyles.removeBtn}>
-            <Text style={setupStyles.removeText}>Remove</Text>
+          <TouchableOpacity onPress={removeLast} style={styles.removeBtn}>
+            <Text style={styles.removeText}>Remove</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <Text style={setupStyles.intensityTitle}>Intensity</Text>
-      <View style={setupStyles.intensityRow}>
+      <Text style={styles.intensityTitle}>Intensity</Text>
+      <View style={styles.intensityRow}>
         {(['mild', 'spicy', 'extreme'] as Intensity[]).map((level) => (
           <TouchableOpacity
             key={level}
-            style={[setupStyles.intensityBtn, intensity === level && setupStyles.intensityActive]}
+            style={[styles.intensityBtn, intensity === level && styles.intensityActive]}
             onPress={() => setIntensity(level)}
           >
-            <Text style={setupStyles.intensityEmoji}>
+            <Text style={styles.intensityEmoji}>
               {level === 'mild' ? '😊' : level === 'spicy' ? '🌶️' : '🔥'}
             </Text>
-            <Text style={[setupStyles.intensityLabel, intensity === level && { color: '#FFF' }]}>
+            <Text style={[styles.intensityLabel, intensity === level && { color: '#FFF' }]}>
               {level.charAt(0).toUpperCase() + level.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <TouchableOpacity style={setupStyles.startBtn} onPress={handleStart}>
-        <LinearGradient colors={['#4facfe', '#00f2fe']} style={setupStyles.startGradient}>
-          <Text style={setupStyles.startText}>⚡ Start Game</Text>
+      <TouchableOpacity style={styles.startBtn} onPress={handleStart}>
+        <LinearGradient colors={['#4facfe', '#00f2fe']} style={styles.startGradient}>
+          <Text style={styles.startText}>⚡ Start Game</Text>
         </LinearGradient>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -126,11 +139,8 @@ function GamePlay() {
   }
 
   const handleSelect = (choice: 'a' | 'b') => {
-    if (selected) return;
-    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setSelected(choice);
-    
     const anim = choice === 'a' ? scaleA : scaleB;
     Animated.sequence([
       Animated.spring(anim, { toValue: 1.05, useNativeDriver: true }),
@@ -146,7 +156,12 @@ function GamePlay() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => { endGame(); router.back(); }}>
+        <TouchableOpacity
+          onPress={() => {
+            endGame();
+            router.back();
+          }}
+        >
           <Text style={styles.closeBtn}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.title}>⚡ Would You Rather</Text>
@@ -207,14 +222,14 @@ export default function WouldYouRatherScreen() {
       await startGame('would_you_rather', players, intensity);
       setGameStarted(true);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load game. Using offline mode.');
+      Alert.alert('Error', 'Using offline content');
     }
   };
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: APP_THEME.colors.background }}>
-        <Text style={{ color: '#FFF', fontSize: 24 }}>⚡ Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>⚡ Loading...</Text>
       </View>
     );
   }
@@ -222,47 +237,226 @@ export default function WouldYouRatherScreen() {
   return gameStarted && session ? <GamePlay /> : <PlayerSetup onStart={handleStart} />;
 }
 
-const setupStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_THEME.colors.background, padding: 24, paddingTop: 80 },
-  title: { fontSize: 32, fontWeight: '800', color: '#FFF', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: APP_THEME.colors.textSecondary, textAlign: 'center', marginTop: 8, marginBottom: 32 },
-  input: { backgroundColor: APP_THEME.colors.surface, borderRadius: 12, padding: 16, marginBottom: 12, color: '#FFF', fontSize: 16 },
-  buttonRow: { flexDirection: 'row', gap: 12, marginVertical: 16 },
-  addBtn: { backgroundColor: APP_THEME.colors.surface, padding: 12, borderRadius: 12 },
-  addText: { color: APP_THEME.colors.secondary, fontWeight: '600' },
-  removeBtn: { padding: 12 },
-  removeText: { color: APP_THEME.colors.primary },
-  intensityTitle: { fontSize: 18, fontWeight: '700', color: '#FFF', marginTop: 24, marginBottom: 12 },
-  intensityRow: { flexDirection: 'row', gap: 12 },
-  intensityBtn: { flex: 1, alignItems: 'center', padding: 16, borderRadius: 16, backgroundColor: APP_THEME.colors.surface },
-  intensityActive: { backgroundColor: APP_THEME.colors.primary },
-  intensityEmoji: { fontSize: 24, marginBottom: 4 },
-  intensityLabel: { color: APP_THEME.colors.textSecondary, fontWeight: '600', fontSize: 13 },
-  startBtn: { marginTop: 32, borderRadius: 16, overflow: 'hidden' },
-  startGradient: { padding: 18, alignItems: 'center', borderRadius: 16 },
-  startText: { fontSize: 20, fontWeight: '800', color: '#FFF' },
-});
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_THEME.colors.background, padding: 20, paddingTop: 60 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  closeBtn: { fontSize: 24, color: '#FFF', padding: 8 },
-  title: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  counter: { color: APP_THEME.colors.textSecondary, fontWeight: '600' },
-  cardsContainer: { flex: 1, justifyContent: 'center', gap: 16 },
-  optionCard: { borderRadius: 24, overflow: 'hidden' },
-  selectedCard: { borderWidth: 3, borderColor: APP_THEME.colors.accent },
-  optionGradient: { padding: 32, borderRadius: 24, alignItems: 'center', minHeight: 180, justifyContent: 'center' },
-  optionLabel: { fontSize: 14, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 2, marginBottom: 12 },
-  optionText: { fontSize: 20, fontWeight: '700', color: '#FFF', textAlign: 'center', lineHeight: 28 },
-  vsContainer: { alignItems: 'center' },
-  vsText: { fontSize: 20, fontWeight: '900', color: APP_THEME.colors.accent },
-  penalty: { textAlign: 'center', color: APP_THEME.colors.textSecondary, marginTop: 16, fontSize: 14 },
-  nextBtn: { backgroundColor: 'rgba(255,255,255,0.15)', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 20, marginBottom: 20 },
-  nextText: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  endContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: APP_THEME.colors.background },
-  endEmoji: { fontSize: 64, marginBottom: 16 },
-  endTitle: { fontSize: 32, fontWeight: '800', color: '#FFF' },
-  endBtn: { marginTop: 32, backgroundColor: APP_THEME.colors.primary, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 16 },
-  endBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  setupContainer: {
+    flex: 1,
+    backgroundColor: APP_THEME.colors.background,
+    padding: 24,
+    paddingTop: 60,
+  },
+  setupTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  setupSubtitle: {
+    fontSize: 16,
+    color: APP_THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  inputRow: {
+    marginBottom: 12,
+  },
+  input: {
+    backgroundColor: APP_THEME.colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    color: '#FFF',
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginVertical: 16,
+  },
+  addBtn: {
+    backgroundColor: APP_THEME.colors.surface,
+    padding: 12,
+    borderRadius: 12,
+    flex: 1,
+  },
+  addText: {
+    color: APP_THEME.colors.secondary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  removeBtn: {
+    padding: 12,
+    flex: 1,
+  },
+  removeText: {
+    color: APP_THEME.colors.primary,
+    textAlign: 'center',
+  },
+  intensityTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  intensityRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  intensityBtn: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: APP_THEME.colors.surface,
+  },
+  intensityActive: {
+    backgroundColor: APP_THEME.colors.primary,
+  },
+  intensityEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  intensityLabel: {
+    color: APP_THEME.colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  startBtn: {
+    marginTop: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  startGradient: {
+    padding: 18,
+    alignItems: 'center',
+  },
+  startText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: APP_THEME.colors.background,
+    padding: 20,
+    paddingTop: 60,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  closeBtn: {
+    fontSize: 24,
+    color: '#FFF',
+    padding: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  counter: {
+    color: APP_THEME.colors.textSecondary,
+    fontWeight: '600',
+  },
+  cardsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 16,
+  },
+  optionCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  selectedCard: {
+    borderWidth: 3,
+    borderColor: APP_THEME.colors.accent,
+  },
+  optionGradient: {
+    padding: 32,
+    borderRadius: 24,
+    alignItems: 'center',
+    minHeight: 180,
+    justifyContent: 'center',
+  },
+  optionLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  optionText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    textAlign: 'center',
+    lineHeight: 28,
+  },
+  vsContainer: {
+    alignItems: 'center',
+  },
+  vsText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: APP_THEME.colors.accent,
+  },
+  penalty: {
+    textAlign: 'center',
+    color: APP_THEME.colors.textSecondary,
+    marginTop: 16,
+    fontSize: 14,
+  },
+  nextBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    padding: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  nextText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  endContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: APP_THEME.colors.background,
+  },
+  endEmoji: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  endTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  endBtn: {
+    marginTop: 32,
+    backgroundColor: APP_THEME.colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  endBtnText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: APP_THEME.colors.background,
+  },
+  loadingText: {
+    color: '#FFF',
+    fontSize: 24,
+  },
 });
