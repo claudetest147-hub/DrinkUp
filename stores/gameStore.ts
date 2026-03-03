@@ -36,22 +36,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
     
     try {
       let cards: GameCard[] = [];
+      const playerNames = players.map(p => p.name);
       
-      // Try AI generation first (if we have player names)
-      if (players.length > 0 && Math.random() > 0.5) { // 50% chance to use AI
-        const playerNames = players.map(p => p.name);
-        const aiResult = await generateAIContent(gameType, intensity, playerNames);
+      // ALWAYS try AI generation first (100% of time)
+      console.log('🤖 Attempting AI generation...');
+      const aiResult = await generateAIContent(gameType, intensity, playerNames);
+      
+      if (aiResult?.cards && aiResult.cards.length > 0) {
+        cards = aiResult.cards;
+        console.log('✨ Using AI-generated content (FRESH)');
+      } else {
+        // Fallback 1: Try database cards
+        console.log('⚠️ AI failed, trying database...');
+        const dbCards = await fetchCards(gameType, intensity, 30);
         
-        if (aiResult?.cards && aiResult.cards.length > 0) {
-          cards = aiResult.cards;
-          console.log('✨ Using AI-generated content');
+        if (dbCards.length > 5) {
+          cards = dbCards;
+          console.log('📦 Using database content');
+        } else {
+          // Fallback 2: Use viral content (research-backed)
+          console.log('⚠️ Database limited, using viral content');
+          const { getViralContent } = await import('../constants/viralContent');
+          const viralCards = getViralContent(gameType);
+          
+          if (viralCards.length > 0) {
+            cards = viralCards;
+            console.log('🔥 Using viral content (high-engagement)');
+          } else {
+            // Fallback 3: Use basic fallback
+            cards = await fetchCards(gameType, intensity, 10);
+            console.log('📝 Using basic fallback');
+          }
         }
       }
       
-      // Fallback to database cards if AI didn't work
-      if (cards.length === 0) {
-        cards = await fetchCards(gameType, intensity, 30);
-        console.log('📦 Using database content');
+      // Mix in some viral content for variety (30% of cards)
+      if (cards.length > 10) {
+        const { getViralContent } = await import('../constants/viralContent');
+        const viralCards = getViralContent(gameType);
+        const viralCount = Math.floor(cards.length * 0.3);
+        const viralToAdd = viralCards
+          .filter(c => c.intensity === intensity)
+          .slice(0, viralCount);
+        cards = [...cards, ...viralToAdd];
       }
       
       // Shuffle cards
@@ -69,6 +96,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       };
 
       set({ session, isLoading: false, freeCardsUsed: 0 });
+      
+      // Log metrics for analytics
+      console.log(`🎮 Game started: ${gameType}, ${cards.length} cards, ${players.length} players`);
     } catch (error) {
       console.error('Error starting game:', error);
       set({ isLoading: false });

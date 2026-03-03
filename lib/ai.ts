@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { GameType, Intensity } from '../types';
+import { getTrendingTopics, generateTrendyPrompt } from './trending';
 
 export async function generateAIContent(
   gameType: GameType,
@@ -8,13 +9,22 @@ export async function generateAIContent(
   trendingTopic?: string
 ) {
   try {
+    // Get real trending topics for context
+    const trends = await getTrendingTopics();
+    const topTrend = trends[0]?.text || trendingTopic;
+    
     const { data, error } = await supabase.functions.invoke('generate-content', {
       body: {
         game_type: gameType,
         intensity,
         count: 15,
         player_names: playerNames,
-        trending_topic: trendingTopic,
+        trending_topic: topTrend,
+        context: {
+          trends: trends.slice(0, 5).map(t => t.text),
+          playerCount: playerNames.length,
+          timestamp: Date.now(),
+        },
       },
     });
 
