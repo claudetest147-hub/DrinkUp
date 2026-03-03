@@ -34,7 +34,7 @@ export async function fetchCards(
   }
 }
 
-function getFallbackContent(gameType: GameType): GameCard[] {
+export function getFallbackContent(gameType: GameType): GameCard[] {
   switch (gameType) {
     case 'truth_or_dare':
       return FALLBACK_TRUTH_OR_DARE;

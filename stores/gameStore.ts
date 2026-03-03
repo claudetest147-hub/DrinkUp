@@ -36,52 +36,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
     
     try {
       let cards: GameCard[] = [];
-      const playerNames = players.map(p => p.name);
       
-      // ALWAYS try AI generation first (100% of time)
-      console.log('🤖 Attempting AI generation...');
-      const aiResult = await generateAIContent(gameType, intensity, playerNames);
+      // PRODUCTION: ALWAYS fetch from database (pre-generated via CRON)
+      // NO live AI calls = $0 cost per game instead of $0.50
+      console.log('📦 Fetching pre-generated content from database...');
+      const dbCards = await fetchCards(gameType, intensity, 50);
       
-      if (aiResult?.cards && aiResult.cards.length > 0) {
-        cards = aiResult.cards;
-        console.log('✨ Using AI-generated content (FRESH)');
+      if (dbCards.length >= 20) {
+        cards = dbCards;
+        console.log(`✅ Loaded ${dbCards.length} cards from database`);
       } else {
-        // Fallback 1: Try database cards
-        console.log('⚠️ AI failed, trying database...');
-        const dbCards = await fetchCards(gameType, intensity, 30);
-        
-        if (dbCards.length > 5) {
-          cards = dbCards;
-          console.log('📦 Using database content');
-        } else {
-          // Fallback 2: Use viral content (research-backed)
-          console.log('⚠️ Database limited, using viral content');
-          const { getViralContent } = await import('../constants/viralContent');
-          const viralCards = getViralContent(gameType);
-          
-          if (viralCards.length > 0) {
-            cards = viralCards;
-            console.log('🔥 Using viral content (high-engagement)');
-          } else {
-            // Fallback 3: Use basic fallback
-            cards = await fetchCards(gameType, intensity, 10);
-            console.log('📝 Using basic fallback');
-          }
-        }
-      }
-      
-      // Mix in some viral content for variety (30% of cards)
-      if (cards.length > 10) {
+        // Fallback: Mix database + viral content
+        console.log('⚠️ Database has limited content, mixing with viral fallback');
         const { getViralContent } = await import('../constants/viralContent');
         const viralCards = getViralContent(gameType);
-        const viralCount = Math.floor(cards.length * 0.3);
-        const viralToAdd = viralCards
-          .filter(c => c.intensity === intensity)
-          .slice(0, viralCount);
-        cards = [...cards, ...viralToAdd];
+        
+        cards = [...dbCards, ...viralCards.filter(c => c.intensity === intensity)];
+        console.log(`🔥 Mixed: ${dbCards.length} DB + ${viralCards.length} viral = ${cards.length} total`);
       }
       
-      // Shuffle cards
+      // If still not enough, use hardcoded fallback
+      if (cards.length < 10) {
+        console.log('⚠️ Using hardcoded fallback content');
+        const { getFallbackContent } = await import('../lib/content');
+        const fallbackCards = await getFallbackContent(gameType);
+        cards = [...cards, ...fallbackCards];
+      }
+      
+      // Shuffle cards for variety
       const shuffled = [...cards].sort(() => Math.random() - 0.5);
 
       const session: GameSession = {
@@ -90,15 +72,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         players,
         currentPlayerIndex: 0,
         currentCardIndex: 0,
-        cards: shuffled,
+        cards: shuffled.slice(0, 50), // Limit to 50 cards per session
         intensity,
         isActive: true,
       };
 
       set({ session, isLoading: false, freeCardsUsed: 0 });
       
-      // Log metrics for analytics
-      console.log(`🎮 Game started: ${gameType}, ${cards.length} cards, ${players.length} players`);
+      // Log analytics event
+      console.log(`🎮 Game started: ${gameType}, ${session.cards.length} cards, ${players.length} players`);
+      console.log(`💰 Cost: $0.00 (vs $0.50 with live AI)`);
     } catch (error) {
       console.error('Error starting game:', error);
       set({ isLoading: false });
