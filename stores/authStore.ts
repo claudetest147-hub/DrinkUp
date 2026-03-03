@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
+import { purchaseService } from '../lib/purchases';
 
 interface AuthStore {
   user: UserProfile | null;
@@ -20,6 +21,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      // Initialize RevenueCat
+      await purchaseService.initialize(session?.user?.id);
+      
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -36,6 +40,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         // Auto sign-in anonymously for zero friction
         const { data, error } = await supabase.auth.signInAnonymously();
         if (!error && data.user) {
+          await purchaseService.initialize(data.user.id);
           set({ isAuthenticated: true, isLoading: false });
         } else {
           set({ isLoading: false });
