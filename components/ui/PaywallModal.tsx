@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_THEME } from '../../constants/themes';
+import { purchaseService, formatOffering, calculateSavings } from '../../lib/purchases';
+import { PurchasesOffering } from 'react-native-purchases';
 
 interface PaywallProps {
   visible: boolean;
@@ -10,6 +12,79 @@ interface PaywallProps {
 }
 
 export default function PaywallModal({ visible, onClose, onSubscribe }: PaywallProps) {
+  const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      loadOfferings();
+    }
+  }, [visible]);
+
+  const loadOfferings = async () => {
+    try {
+      setLoading(true);
+      const offering = await purchaseService.getOfferings();
+      setOfferings(offering);
+    } catch (error) {
+      console.error('Error loading offerings:', error);
+      Alert.alert('Error', 'Could not load subscription options. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePurchase = async (plan: 'monthly' | 'annual') => {
+    if (!offerings) {
+      Alert.alert('Error', 'No offerings available');
+      return;
+    }
+
+    const { monthly, annual } = formatOffering(offerings);
+    const selectedPackage = plan === 'monthly' ? monthly : annual;
+
+    if (!selectedPackage) {
+      Alert.alert('Error', 'This plan is not available');
+      return;
+    }
+
+    setPurchasing(true);
+
+    try {
+      const pkg = offerings.availablePackages.find(
+        (p) => p.identifier === selectedPackage.identifier
+      );
+
+      if (!pkg) {
+        throw new Error('Package not found');
+      }
+
+      const customerInfo = await purchaseService.purchasePackage(pkg);
+      
+      // Check if purchase was successful
+      if (customerInfo.entitlements.active['pro']) {
+        onSubscribe(plan);
+        onClose();
+        Alert.alert('🎉 Welcome to Pro!', 'Unlimited cards unlocked. Enjoy the party!');
+      }
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        Alert.alert('Purchase Failed', 'Could not complete purchase. Please try again.');
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const { monthly, annual } = offerings ? formatOffering(offerings) : { monthly: null, annual: null };
+  const savings = monthly && annual 
+    ? calculateSavings(
+        parseFloat(monthly.product.price_string.replace(/[^0-9.]/g, '')),
+        parseFloat(annual.product.price_string.replace(/[^0-9.]/g, ''))
+      )
+    : 44;
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
@@ -32,22 +107,50 @@ export default function PaywallModal({ visible, onClose, onSubscribe }: PaywallP
             ))}
           </View>
 
-          <TouchableOpacity onPress={() => onSubscribe('annual')} style={styles.annualBtn}>
-            <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.annualGradient}>
-              <Text style={styles.annualPrice}>$39.99/year</Text>
-              <Text style={styles.annualSave}>Save 44% — Best Value</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={APP_THEME.colors.primary} />
+              <Text style={styles.loadingText}>Loading plans...</Text>
+            </View>
+          ) : (
+            <>
+              {annual && (
+                <TouchableOpacity 
+                  onPress={() => handlePurchase('annual')} 
+                  style={styles.annualBtn}
+                  disabled={purchasing}
+                >
+                  <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.annualGradient}>
+                    <Text style={styles.annualPrice}>{annual.product.price_string}/year</Text>
+                    <Text style={styles.annualSave}>Save {savings}% — Best Value</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
 
-          <TouchableOpacity onPress={() => onSubscribe('monthly')} style={styles.monthlyBtn}>
-            <Text style={styles.monthlyText}>$5.99/month</Text>
-          </TouchableOpacity>
+              {monthly && (
+                <TouchableOpacity 
+                  onPress={() => handlePurchase('monthly')} 
+                  style={styles.monthlyBtn}
+                  disabled={purchasing}
+                >
+                  <Text style={styles.monthlyText}>{monthly.product.price_string}/month</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
 
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} disabled={purchasing}>
             <Text style={styles.closeText}>Maybe Later</Text>
           </TouchableOpacity>
 
-          <Text style={styles.legal}>Cancel anytime. Billed through App Store.</Text>
+          <Text style={styles.legal}>Cancel anytime. Auto-renews until cancelled.</Text>
+          
+          {purchasing && (
+            <View style={styles.purchasingOverlay}>
+              <ActivityIndicator size="large" color="#FFF" />
+              <Text style={styles.purchasingText}>Processing...</Text>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -137,5 +240,27 @@ const styles = StyleSheet.create({
     color: APP_THEME.colors.textSecondary,
     marginTop: 16,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: APP_THEME.colors.textSecondary,
+    marginTop: 12,
+  },
+  purchasingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 24,
+  },
+  purchasingText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 12,
   },
 });
