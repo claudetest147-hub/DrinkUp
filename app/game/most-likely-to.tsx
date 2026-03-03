@@ -13,8 +13,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useGameStore } from '../../stores/gameStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { APP_THEME } from '../../constants/themes';
 import { Player, Intensity } from '../../types';
+import PaywallModal from '../../components/ui/PaywallModal';
 
 function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Intensity) => void }) {
   const [names, setNames] = useState<string[]>(['', '']);
@@ -111,7 +113,8 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
 }
 
 function GamePlay() {
-  const { session, nextCard, endGame } = useGameStore();
+  const { session, nextCard, endGame, freeCardsUsed, showPaywall, setShowPaywall } = useGameStore();
+  const { isPro } = useSubscriptionStore();
   const [revealed, setRevealed] = useState(false);
   const [votes, setVotes] = useState<Record<string, number>>({});
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -159,6 +162,11 @@ function GamePlay() {
   };
 
   const handleNext = () => {
+    // Check if user hit free limit
+    if (!isPro && freeCardsUsed >= 10) {
+      setShowPaywall(true);
+      return;
+    }
     setRevealed(false);
     setVotes({});
     nextCard();
@@ -169,6 +177,17 @@ function GamePlay() {
     }).start();
   };
 
+  const handleSubscribe = async (plan: 'monthly' | 'annual') => {
+    Alert.alert('Coming Soon', 'Subscription feature will be available in the next update!');
+    setShowPaywall(false);
+  };
+
+  const handleClosePaywall = () => {
+    setShowPaywall(false);
+    endGame();
+    router.back();
+  };
+
   const sortedPlayers = [...session.players].sort(
     (a, b) => (votes[b.id] || 0) - (votes[a.id] || 0)
   );
@@ -176,6 +195,13 @@ function GamePlay() {
 
   return (
     <View style={styles.container}>
+      {/* Paywall Modal */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={handleClosePaywall}
+        onSubscribe={handleSubscribe}
+      />
+      
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {

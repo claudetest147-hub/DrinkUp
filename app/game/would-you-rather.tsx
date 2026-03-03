@@ -13,8 +13,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useGameStore } from '../../stores/gameStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { APP_THEME } from '../../constants/themes';
 import { Player, Intensity } from '../../types';
+import PaywallModal from '../../components/ui/PaywallModal';
 
 function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Intensity) => void }) {
   const [names, setNames] = useState<string[]>(['', '']);
@@ -111,7 +113,8 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
 }
 
 function GamePlay() {
-  const { session, nextCard, endGame } = useGameStore();
+  const { session, nextCard, endGame, freeCardsUsed, showPaywall, setShowPaywall } = useGameStore();
+  const { isPro } = useSubscriptionStore();
   const [selected, setSelected] = useState<'a' | 'b' | null>(null);
   const scaleA = useRef(new Animated.Value(1)).current;
   const scaleB = useRef(new Animated.Value(1)).current;
@@ -149,12 +152,35 @@ function GamePlay() {
   };
 
   const handleNext = () => {
+    // Check if user hit free limit
+    if (!isPro && freeCardsUsed >= 10) {
+      setShowPaywall(true);
+      return;
+    }
     setSelected(null);
     nextCard();
   };
 
+  const handleSubscribe = async (plan: 'monthly' | 'annual') => {
+    Alert.alert('Coming Soon', 'Subscription feature will be available in the next update!');
+    setShowPaywall(false);
+  };
+
+  const handleClosePaywall = () => {
+    setShowPaywall(false);
+    endGame();
+    router.back();
+  };
+
   return (
     <View style={styles.container}>
+      {/* Paywall Modal */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={handleClosePaywall}
+        onSubscribe={handleSubscribe}
+      />
+      
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
