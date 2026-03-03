@@ -14,8 +14,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useGameStore } from '../../stores/gameStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { APP_THEME } from '../../constants/themes';
 import { Player, Intensity } from '../../types';
+import PaywallModal from '../../components/ui/PaywallModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -124,7 +126,8 @@ function PlayerSetup({ onStart }: { onStart: (players: Player[], intensity: Inte
 
 // Main game play
 function GamePlay() {
-  const { session, nextCard, nextPlayer, endGame } = useGameStore();
+  const { session, nextCard, nextPlayer, endGame, freeCardsUsed, showPaywall, setShowPaywall } = useGameStore();
+  const { isPro } = useSubscriptionStore();
   const [showingChoice, setShowingChoice] = useState(true);
   const [selectedType, setSelectedType] = useState<'truth' | 'dare' | null>(null);
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -167,6 +170,12 @@ function GamePlay() {
   };
 
   const handleNext = () => {
+    // Check if user hit free limit
+    if (!isPro && freeCardsUsed >= 10) {
+      setShowPaywall(true);
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowingChoice(true);
     setSelectedType(null);
@@ -179,6 +188,19 @@ function GamePlay() {
     }).start();
   };
 
+  const handleSubscribe = async (plan: 'monthly' | 'annual') => {
+    // In production, this would call RevenueCat
+    Alert.alert('Coming Soon', 'Subscription feature will be available in the next update!');
+    setShowPaywall(false);
+  };
+
+  const handleClosePaywall = () => {
+    setShowPaywall(false);
+    // Navigate back to home
+    endGame();
+    router.back();
+  };
+
   // Filter card by selected type or show any if not filtered
   const displayCard = selectedType
     ? currentCard.card_subtype === selectedType
@@ -188,6 +210,13 @@ function GamePlay() {
 
   return (
     <View style={playStyles.container}>
+      {/* Paywall Modal */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={handleClosePaywall}
+        onSubscribe={handleSubscribe}
+      />
+
       {/* Header */}
       <View style={playStyles.header}>
         <TouchableOpacity
