@@ -92,6 +92,41 @@ export const FALLBACK_WOULD_YOU_RATHER: GameCard[] = [
   },
 ];
 
+export const FALLBACK_NEVER_HAVE_I_EVER: GameCard[] = [
+  {
+    id: 'nhie-1',
+    game_type: 'never_have_i_ever',
+    content: 'Texted the wrong person',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'nhie-2',
+    game_type: 'never_have_i_ever',
+    content: 'Stalked an ex on social media',
+    intensity: 'spicy',
+    drink_penalty: 2,
+    is_premium: false,
+  },
+  {
+    id: 'nhie-3',
+    game_type: 'never_have_i_ever',
+    content: 'Cried during a kids movie',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+  {
+    id: 'nhie-4',
+    game_type: 'never_have_i_ever',
+    content: 'Pretended to be sick to skip work',
+    intensity: 'mild',
+    drink_penalty: 1,
+    is_premium: false,
+  },
+];
+
 export const FALLBACK_MOST_LIKELY_TO: GameCard[] = [
   {
     id: 'mlt-1',

@@ -1,4 +1,4 @@
-export type GameType = 'truth_or_dare' | 'would_you_rather' | 'most_likely_to';
+export type GameType = 'truth_or_dare' | 'would_you_rather' | 'most_likely_to' | 'never_have_i_ever';
 export type Intensity = 'mild' | 'spicy' | 'extreme';
 
 export interface Player {

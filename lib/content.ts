@@ -3,7 +3,8 @@ import { GameCard, GameType, Intensity } from '../types';
 import { 
   FALLBACK_TRUTH_OR_DARE, 
   FALLBACK_WOULD_YOU_RATHER, 
-  FALLBACK_MOST_LIKELY_TO 
+  FALLBACK_MOST_LIKELY_TO,
+  FALLBACK_NEVER_HAVE_I_EVER
 } from '../constants/fallbackContent';
 
 export async function fetchCards(
@@ -41,6 +42,8 @@ function getFallbackContent(gameType: GameType): GameCard[] {
       return FALLBACK_WOULD_YOU_RATHER;
     case 'most_likely_to':
       return FALLBACK_MOST_LIKELY_TO;
+    case 'never_have_i_ever':
+      return FALLBACK_NEVER_HAVE_I_EVER;
     default:
       return [];
   }

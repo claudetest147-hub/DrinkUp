@@ -59,4 +59,11 @@ export const GAME_THEMES = {
     gradient: ['#43e97b', '#38f9d7'],
     accentColor: '#43e97b',
   },
+  never_have_i_ever: {
+    icon: '🙈',
+    title: 'Never Have I Ever',
+    subtitle: 'Confess or drink',
+    gradient: ['#FF6B9D', '#C06C84'],
+    accentColor: '#FF6B9D',
+  },
 };
